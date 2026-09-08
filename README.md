@@ -189,10 +189,9 @@ ls data/osz/npz | wc -l
 
 ```bash
 mkdir -p work_dirs
-nohup python tools/train.py \
-  projects/configs/resworld/resworld_osz_config.py \
-  --gpus 4 \
-  > work_dirs/train_osz.log 2>&1 &
+CUDA_VISIBLE_DEVICES=4,5,6,7 nohup bash tools/dist_train.sh \
+    projects/configs/resworld/resworld_osz_config.py 4 \
+    > work_dirs/train.log 2>&1 &
 ```
 
 若需先跑最小验证（只开 IDEA4，可 warm-start 基线 checkpoint）：

@@ -933,7 +933,9 @@ class v1CustomDetectionConfig:
         self.max_boxes_per_sample = max_boxes_per_sample
         self.mean_ap_weight = mean_ap_weight
 
-        self.class_names = self.class_range_y.keys()
+        # 转 list: dict_keys 视图不可 pickle, spawn 下 DataLoader 序列化
+        # 整个 dataset 时会 `cannot pickle 'dict_keys' object`
+        self.class_names = list(self.class_range_y.keys())
 
     def __eq__(self, other):
         eq = True
