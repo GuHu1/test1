@@ -399,6 +399,7 @@ class ResWorldHead(BaseModule):
 
         # --- OSZ: 盲区年龄风险场注入 B_future 合成 ---
         # 高龄盲区携带风险特征, FGTR 在参考点处可 attend 到"可能有物体涌现"的区域
+        vis_trans_pred = None
         if self.use_osz and self.osz_risk_inject and osz_vis is not None:
             osz_age0 = osz_age[:, 0].to(dtype)
             risk_map = (1.0 - osz_vis[:, 0].to(dtype)) * \
@@ -408,6 +409,15 @@ class ResWorldHead(BaseModule):
             pred_bev_2d = pred_bev_2d + self.osz_risk_beta * risk_map * \
                           self.osz_risk_conv(pred_bev_2d)
             pred_bev = pred_bev_2d.reshape(bs, c, h * w).permute(0, 2, 1)
+
+        # --- OSZ: 可见性转移预测 (IDEA1c) ---
+        # 从 B_future (pred_bev) 预测下一帧可见性图, 自监督目标为 osz_vis_next;
+        # 仅在 risk_inject 关闭时补做 2D 展开 (两种路径共享同一 pred_bev_2d)
+        if self.use_osz and self.osz_vis_trans_weight > 0 and \
+                self.osz_vis_trans_head is not None:
+            if pred_bev.dim() == 3:
+                pred_bev_2d = pred_bev.permute(0, 2, 1).reshape(bs, c, h, w)
+            vis_trans_pred = self.osz_vis_trans_head(pred_bev_2d)      # (bs,1,H,W)
 
         way_point = self.col_attn(
                 query=way_point,
