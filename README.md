@@ -252,11 +252,11 @@ nohup python tools/train.py \
 ### 4. 测试 / 评估
 
 ```bash
-nohup python tools/test.py \
-  projects/configs/resworld/resworld_osz_config.py \
-  work_dirs/latest.pth \
-  --eval bbox \
-  > work_dirs/test_osz.log 2>&1 &
+CUDA_VISIBLE_DEVICES=4,5,6,7 nohup bash tools/dist_test.sh \
+    projects/configs/resworld/resworld_osz_config.py \
+    work_dirs/resworld_osz_config/epoch_12_ema.pth 4 \
+    --eval bbox \
+    > work_dirs/eval.log 2>&1 &
 ```
 
 ### 5. 消融矩阵（建议顺序）

@@ -52,14 +52,21 @@ class CustomDefaultFormatBundle3D(DefaultFormatBundle3D):
             if 'gt_attr_labels' in results:
                 results['gt_attr_labels'] = DC(to_tensor(results['gt_attr_labels']), cpu_only=False)
             # OSZ 资产: (F, H, W) float32, 与 ego 相关键保持相同的 None-包装约定
+            # 显式 pad_dims=None: 魔改 mmcv 的 DataContainer 默认 pad_dims=2,
+            # 低维张量 (如 osz_vis_next_valid 的 (1,1)) 会在 collate 里触发
+            # assert ndim > pad_dims 崩溃, 这里显式关闭 padding 分支
             if 'osz_vis' in results:
-                results['osz_vis'] = DC(to_tensor(results['osz_vis'][None, ...]), stack=True)
+                results['osz_vis'] = DC(to_tensor(results['osz_vis'][None, ...]),
+                                        stack=True, pad_dims=None)
             if 'osz_age' in results:
-                results['osz_age'] = DC(to_tensor(results['osz_age'][None, ...]), stack=True)
+                results['osz_age'] = DC(to_tensor(results['osz_age'][None, ...]),
+                                        stack=True, pad_dims=None)
             if 'osz_vis_next' in results:
-                results['osz_vis_next'] = DC(to_tensor(results['osz_vis_next'][None, ...]), stack=True)
+                results['osz_vis_next'] = DC(to_tensor(results['osz_vis_next'][None, ...]),
+                                             stack=True, pad_dims=None)
             if 'osz_vis_next_valid' in results:
                 results['osz_vis_next_valid'] = DC(to_tensor(np.array(
-                    [[results['osz_vis_next_valid']]], dtype=np.float32)), stack=True)
+                    [[results['osz_vis_next_valid']]], dtype=np.float32)),
+                    stack=True, pad_dims=None)
 
         return results
