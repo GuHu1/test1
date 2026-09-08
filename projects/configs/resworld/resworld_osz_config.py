@@ -61,13 +61,13 @@ test_pipeline = [
                  keys=['img_inputs', 'gt_bboxes_3d', 'gt_labels_3d', 'fut_valid_flag', 'can_bus',
                        'ego_his_trajs', 'ego_fut_trajs', 'ego_fut_masks', 'ego_fut_cmd',
                        'ego_lcf_feat', 'gt_attr_labels',
-                       'osz_vis', 'osz_age'])])
+                       'osz_vis', 'osz_age', 'osz_vis_next', 'osz_vis_next_valid'])])
 ]
 
 data = dict(
-    train=dict(osz_root=osz_root),
-    val=dict(osz_root=osz_root),
-    test=dict(osz_root=osz_root),
+    train=dict(osz_root=osz_root, pipeline=train_pipeline),
+    val=dict(osz_root=osz_root, pipeline=test_pipeline),
+    test=dict(osz_root=osz_root, pipeline=test_pipeline),
 )
 
 model = dict(

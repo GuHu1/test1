@@ -144,28 +144,36 @@ LoadOSZAnnotations（pipeline 变换，新增）
 
 环境：Python 3.8 / torch 1.9.1+cu111 / numpy 1.19.5 / nuscenes-devkit / scipy（与 `reference_code/requirements.txt` 一致）。
 
-### 0. 准备 MiDaS 深度模型（一次性）
+### 0. 准备权重与推理代码（一次性，路径固定为 tools/osz 内部）
 
 ```bash
-mkdir -p weights third_party
-git clone git@github.com:isl-org/MiDaS.git third_party/MiDaS
-cd weights
-wget https://github.com/isl-org/MiDaS/releases/download/v2_1/midas_v21_small_256.pt
+mkdir -p tools/osz/weights tools/osz/third_party
+git clone https://github.com/isl-org/MiDaS.git tools/osz/third_party/MiDaS  # hubconf.py 须在 tools/osz/third_party/MiDaS/ 下
+wget -P tools/osz/weights https://github.com/isl-org/MiDaS/releases/download/v2_1/midas_v21_small_256.pt
 ```
 
-### 1. 抽查一个场景（建议先做，验证 OSZ 产出与对齐）
+两处路径由 `tools/osz/osz_config.py` 的 `MIDAS_MODEL_PATH`（`tools/osz/weights/midas_v21_small_256.pt`）与 `MIDAS_REPO_PATH`（`tools/osz/third_party/MiDaS`）指定，运行时不联网。没有权重/源码时可用 `--depth-source lidar` 兜底跑通管线（下面 (5)）。
+
+### 1. OSZ 资产导出（训练前置，全部在仓库根目录执行）
+
+**约束**：配置 `osz_root = 'data/osz/npz'`（resworld_osz_config.py），导出 `--outdir` 必须是 `data/osz`，npz 才会落在 `data/osz/npz/{token}.npz`；`LoadOSZAnnotations(allow_missing=False)` 要求 pkl 里的**每个 sample 都有 npz**，缺一个训练即报错。
+
+**(1) 冒烟测试（无需 nuScenes / MiDaS，验证管线 + 可视化产出）**
 
 ```bash
-python tools/osz/run_export.py \
-  --dataroot data/nuscenes \
-  --version v1.0-trainval \
-  --outdir data/osz \
-  --max-scenes 1 --sample-token ca9a282c9e77460f8360f564131a8af5 --no-viz
+python tools/osz/run_export.py --mock --outdir ./osz_output
 ```
 
-### 2. 全量导出 OSZ 资产（8 分片后台并行，长任务用 nohup）
+**(2) 单样本抽查（先验证某一帧资产与对齐，产出 viz/{token}/ 图片）**
 
-盲区年龄沿场景时间轴递推，必须按场景分片保证递推不断裂：
+```bash
+python tools/osz/run_export.py --dataroot data/nuscenes --version v1.0-trainval \
+  --sample-token ca9a282c9e77460f8360f564131a8af5 --outdir data/osz
+```
+
+> 注意：单帧模式下 `occlusion_age` 只递推一步（全部盲区 = dt），只能用于看掩码/对齐，不能代表真实盲区年龄。
+
+**(3) 全量导出（必须按场景分片——盲区年龄沿场景时间轴递推，保证递推不断裂）**
 
 ```bash
 nohup bash -c '
@@ -179,10 +187,46 @@ for i in 0 1 2 3 4 5 6 7; do
 done
 wait
 ' > work_dirs/export_all.log 2>&1 &
-
-#查看导出进度
-ls data/osz/npz | wc -l
 ```
+
+**(4) 只导出 info pkl 覆盖的场景（推荐：省算力，且保证与训练/验证集一一对应）**
+
+```bash
+nohup bash -c '
+for i in 0 1 2 3 4 5 6 7; do
+  CUDA_VISIBLE_DEVICES=$i python tools/osz/run_export.py \
+    --dataroot data/nuscenes --version v1.0-trainval --outdir data/osz \
+    --info-pkl data/nuscenes/vad_nuscenes_infos_temporal_train.pkl \
+    --scene-shard $i --num-scene-shards 8 --no-viz \
+    > work_dirs/osz/export_train_shard$i.log 2>&1 &
+done
+wait
+' > work_dirs/export_train_all.log 2>&1 &
+
+# 验证集同理，把上面的 pkl 换成 vad_nuscenes_infos_temporal_val.pkl
+```
+
+**(5) 无 MiDaS 权重/源码时的兜底（仅 LiDAR 投影深度，质量明显更低）**
+
+```bash
+python tools/osz/run_export.py --dataroot data/nuscenes --version v1.0-trainval \
+  --depth-source lidar --outdir data/osz \
+  --scene-shard 0 --num-scene-shards 8 --no-viz
+```
+
+**(6) 完整性校验**
+
+```bash
+ls data/osz/npz | wc -l          # 须 ≥ 对应 pkl 的 sample 总数（当前帧 + 相邻帧 + 下一帧全部要存在）
+# 例外样本会在训练日志报：OSZ asset not found: data/osz/npz/{token}.npz
+```
+
+**导出参数注意事项（⚠️）**
+
+- **默认不要加 `--use-drivable`**：数据集管线直接消费未过滤的 `osz_eye`/`occlusion_age`，加了会与 `LoadOSZAnnotations` 的期望不一致（除非同步改管线）。
+- 场景分片数（`--num-scene-shards`）按机器并行度调整；分片越多单 shard 越短。
+- `--overwrite` 重算已存在的 npz；未加时已存在样本会跳过，且 `_resume_age` 会从旧资产恢复年龄继续递推，可随时续跑。
+- 导出中途失败直接重跑同一 shard 即可，npz 幂等落盘。
 
 
 ### 3. 训练完整模型
