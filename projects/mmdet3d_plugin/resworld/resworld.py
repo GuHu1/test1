@@ -121,7 +121,9 @@ class ResWorld(BEVDepth4D):
                                             ego_his_trajs=ego_his_trajs, ego_fut_trajs=ego_fut_trajs,
                                             ego_fut_masks=ego_fut_masks, ego_fut_cmd=ego_fut_cmd,
                                             ego_lcf_feat=ego_lcf_feat, gt_attr_labels=gt_attr_labels,
-                                            osz_vis=osz_vis, osz_age=osz_age)
+                                            osz_vis=osz_vis, osz_age=osz_age,
+                                            osz_vis_next=osz_vis_next,
+                                            osz_vis_next_valid=osz_vis_next_valid)
         losses.update(losses_pts)
         return losses
 

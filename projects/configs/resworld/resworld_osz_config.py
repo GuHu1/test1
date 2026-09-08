@@ -70,6 +70,10 @@ data = dict(
     test=dict(osz_root=osz_root, pipeline=test_pipeline),
 )
 
+# DDP 容错: OSZ 各子模块按样本/消融组合条件性参与前向 (如 osz_vis_trans_head
+# 在部分样本的 loss 中可能缺席), 开启后 reducer 不再因"参数未收到梯度"中断训练
+find_unused_parameters = True
+
 model = dict(
     pts_bbox_head=dict(
         # --- OSZ 遮挡特定处理开关 ---
