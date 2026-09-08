@@ -366,7 +366,9 @@ class ResWorldHead(BaseModule):
             if self.osz_permanence and R_all.shape[1] > 1:
                 # 永续门控: 当前可见 -> 信任最新残差; 刚被遮挡 -> 回退到旧残差 (匀速外推先验)
                 g0 = vis_q[:, 0]                                          # (bs,Ns)
-                g_rest = (1.0 - vis_q[:, 0:1]) * vis_q[:, 1:]             # (bs,F-2,Ns)
+                # 旧残差 i 的门控是 (1-v_t)*v_i, i=1..F-2, 与 F-1 个残差一一对应;
+                # 不能用 vis_q[:, 1:] (会多取最后一帧, 使 gates 比残差多 1 行)
+                g_rest = (1.0 - vis_q[:, 0:1]) * vis_q[:, 1:-1]           # (bs,F-2,Ns)
                 gates = torch.cat([g0.unsqueeze(1), g_rest], dim=1)       # (bs,F-1,Ns)
                 gates = gates / (gates.sum(dim=1, keepdim=True) + 1e-6)
                 Rm = (R_motion * gates.unsqueeze(-1)).sum(dim=1)          # (bs,Ns,2C)
