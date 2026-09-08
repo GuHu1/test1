@@ -134,6 +134,10 @@ class ResWorldHead(BaseModule):
         self.osz_risk_inject = osz_risk_inject  # 盲区年龄风险场注入 B_future
         self.osz_attn_bias = osz_attn_bias      # TokenLearner 注意力 logit 偏置强度 (0=关)
         self.osz_age_tau = osz_age_tau          # 盲区年龄归一化时间常数(秒)
+        self.osz_occ_tokens = osz_occ_tokens    # 遮挡占位 token 数 (0=关)
+        self.osz_occ_bias = osz_occ_bias        # 遮挡 token 的注意力 logit 偏置
+        self.osz_vis_trans_weight = osz_vis_trans_weight    # 可见性转移监督权重 (0=关)
+        self.osz_attn_cover_weight = osz_attn_cover_weight  # 注意力覆盖惩罚权重 (0=关)
         self.grid_min = torch.tensor([grid_config['x'][0], grid_config['y'][0]])
         self.grid_max = torch.tensor([grid_config['x'][1], grid_config['y'][1]])
         self.grid_size = torch.tensor([grid_config['x'][2], grid_config['y'][2]])
