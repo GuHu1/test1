@@ -234,6 +234,14 @@ class ResWorldHead(BaseModule):
         bt, c, h, w = bev_feats.shape
         bs = bt // self.num_frames
         # OSZ: 统一为 (bs, num_frames, H, W)
+        # 测试管线经 MultiScaleFlipAug3D 会把每个键包成 [aug] 列表(可能多层嵌套),
+        # 训练管线则是裸张量; 先逐层解包到张量, 再统一形状
+        if osz_vis is not None and isinstance(osz_vis, (list, tuple)):
+            while isinstance(osz_vis, (list, tuple)):
+                osz_vis = osz_vis[0]
+        if osz_age is not None and isinstance(osz_age, (list, tuple)):
+            while isinstance(osz_age, (list, tuple)):
+                osz_age = osz_age[0]
         if osz_vis is not None and osz_vis.dim() == 5:
             osz_vis = osz_vis.squeeze(1)
         if osz_age is not None and osz_age.dim() == 5:
