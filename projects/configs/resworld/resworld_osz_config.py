@@ -31,7 +31,7 @@ train_pipeline = [
     dict(type='CustomCollect3D',
          keys=['gt_bboxes_3d', 'gt_labels_3d', 'img_inputs', 'ego_his_trajs', 'gt_depth', 'can_bus',
                'ego_fut_trajs', 'ego_fut_masks', 'ego_fut_cmd', 'ego_lcf_feat', 'gt_attr_labels',
-               'osz_vis', 'osz_age'])
+               'osz_vis', 'osz_age', 'osz_vis_next', 'osz_vis_next_valid'])
 ]
 
 test_pipeline = [
